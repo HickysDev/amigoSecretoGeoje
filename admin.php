@@ -8,6 +8,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if ($acao === 'entrar') {
             $senha = (string) ($_POST['senha'] ?? '');
+            if (senha_admin_fraca()) {
+                throw new Recusa('Defina uma senha_admin com pelo menos 10 caracteres no config.php.');
+            }
             $certa = dados_alterar(function (array &$d) use ($senha, $config) {
                 $chave = 'admin:ip:' . ip();
                 if (!limite_ok($d, $chave, 5, 900)) {
@@ -124,6 +127,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 foreach ($ids as $i => $id) {
                     $pares[$id] = $ids[($i + 1) % count($ids)];
                 }
+                // Gravado por id: a ordem do arquivo não pode contar o ciclo
+                ksort($pares);
                 $d['sorteio'] = ['feito_em' => time(), 'pares' => $pares];
                 $itens = [];
                 foreach ($pares as $de => $para) {
@@ -137,6 +142,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $token = novo_token($p, VALIDADE_CONVITE);
                     $itens[] = [$p, $d['participantes'][$para], $token];
                     unset($p);
+                }
+                // Os e-mails saem em ordem aleatória: a hora de chegada não diz quem tirou quem
+                for ($i = count($itens) - 1; $i > 0; $i--) {
+                    $j = random_int(0, $i);
+                    [$itens[$i], $itens[$j]] = [$itens[$j], $itens[$i]];
                 }
                 return $itens;
             });
@@ -197,7 +207,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } catch (Recusa $e) {
         flash('erro', $e->getMessage());
     } catch (Throwable $e) {
-        flash('erro', 'Algo deu errado: ' . $e->getMessage());
+        error_log('Amigo Secreto: ' . $e->getMessage());
+        flash('erro', 'Algo deu errado. Tente de novo em instantes');
     }
     redirecionar();
 }
@@ -213,12 +224,16 @@ if (!admin_logado()):
   <section class="acesso-form">
     <h1 class="titulo">Painel do organizador</h1>
     <p class="sub">Cadastre o grupo, faça o sorteio e acompanhe quem já entrou</p>
+    <?php if (senha_admin_fraca()): ?>
+    <div class="aviso aviso-erro estatico"><?= icone('alerta') ?><span>O painel está fechado: defina uma senha_admin com pelo menos 10 caracteres no config.php</span></div>
+    <?php else: ?>
     <form method="post" class="form">
       <?= csrf_campo() ?>
       <input type="text" name="usuario" value="organizador" autocomplete="username" hidden readonly>
       <label class="campo"><span>Senha do organizador</span><input type="password" name="senha" autocomplete="current-password" required autofocus></label>
       <button class="botao primario grande" name="acao" value="entrar">Entrar</button>
     </form>
+    <?php endif ?>
   </section>
 </main>
 <?php
@@ -230,7 +245,7 @@ $pessoas = array_values($d['participantes']);
 usort($pessoas, function ($a, $b) { return strcasecmp($a['nome'], $b['nome']); });
 $sorteado = (bool) $d['sorteio'];
 $entraram = count(array_filter($pessoas, function ($p) { return !empty($p['senha']); }));
-$sem_url = !preg_match('~^https?://~', trim($config['url_site'] ?? ''));
+$sem_url = !url_site_valida(trim((string) ($config['url_site'] ?? '')));
 $avatares = avatares_steam();
 
 function situacao_steam(array $d, array $p): string
@@ -272,7 +287,7 @@ topo('Organizador · ' . $evento['nome'], ['evento' => $evento['nome'], 'usuario
   </div>
 
   <?php if ($sem_url): ?>
-  <div class="aviso aviso-erro estatico"><?= icone('alerta') ?><span>Preencha o url_site no config.php. Sem ele os e-mails não podem levar o link do site</span></div>
+  <div class="aviso aviso-erro estatico"><?= icone('alerta') ?><span>Preencha o url_site no config.php com o endereço do site, começando por https://. Sem ele os e-mails não podem levar o link</span></div>
   <?php endif ?>
 
   <div class="painel-grade">

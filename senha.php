@@ -35,14 +35,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($acao === 'pedir') {
             $email = trim((string) ($_POST['email'] ?? ''));
             // A resposta é sempre a mesma, exista o e-mail ou não
-            $tarefa = dados_alterar(function (array &$d) use ($email) {
-                $chaves = ['reset:ip:' . ip(), 'reset:email:' . strtolower($email)];
-                $dentro = limite_ok($d, $chaves[0], 10, 3600) && limite_ok($d, $chaves[1], 3, 3600);
+            $tarefa = !email_valido($email) ? null : dados_alterar(function (array &$d) use ($email) {
+                $chaves = ['reset:ip:' . ip(), 'reset:email:' . sha1(strtolower($email))];
+                // Passou do limite: não envia nem conta de novo
+                if (!limite_ok($d, $chaves[0], 10, 3600) || !limite_ok($d, $chaves[1], 3, 3600)) {
+                    return null;
+                }
                 foreach ($chaves as $c) {
                     limite_marcar($d, $c);
                 }
                 $p = buscar_por_email($d, $email);
-                if (!$dentro || !$p || !$d['sorteio']) {
+                if (!$p || !$d['sorteio']) {
                     return null;
                 }
                 $token = novo_token($d['participantes'][$p['id']], VALIDADE_REDEFINICAO);
@@ -69,7 +72,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } catch (Recusa $e) {
         flash('erro', $e->getMessage());
     } catch (Throwable $e) {
-        flash('erro', 'Algo deu errado: ' . $e->getMessage());
+        error_log('Amigo Secreto: ' . $e->getMessage());
+        flash('erro', 'Algo deu errado. Tente de novo em instantes');
     }
     redirecionar($token !== '' ? 'senha.php?t=' . rawurlencode($token) : 'senha.php');
 }

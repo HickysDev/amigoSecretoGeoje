@@ -174,7 +174,7 @@ Participantes, dados do evento e o sorteio. O painel não mostra quem tirou quem
 | Camada | Tecnologia |
 |--------|-----------|
 | Backend | PHP 7.4+ puro, sem Composer e sem framework |
-| Dados | Um arquivo JSON (`dados/dados.json`) com trava e gravação atômica |
+| Dados | Um arquivo JSON (`dados/dados.php`, com uma linha de guarda no topo) com trava e gravação atômica |
 | Frontend | HTML, CSS e JavaScript puros |
 | E-mail | SMTP próprio (`smtp.php`), sem biblioteca |
 | Preços e listas | Consultas públicas da Steam, sem chave |
@@ -247,7 +247,9 @@ http://localhost:8000/admin.php
 
 No hPanel, em **E-mails**, crie uma conta (por exemplo `amigosecreto@seudominio.com.br`) e guarde a senha.
 
-**2. Envie os arquivos**
+**2. Ative o SSL e envie os arquivos**
+
+O site só funciona por HTTPS: o `.htaccess` redireciona todo acesso `http://` e os links dos e-mails exigem `https://`. No hPanel, em **Segurança** → **SSL**, confira que o certificado do domínio está ativo antes de continuar.
 
 Pelo Git (hPanel → **Avançado** → **Git**):
 
@@ -277,6 +279,8 @@ No Gerenciador de Arquivos, copie `config.exemplo.php` para `config.php` na mesm
 ],
 ```
 
+A `senha_admin` precisa ter pelo menos 10 caracteres: com a senha do modelo ou com uma curta, o painel do organizador fica fechado. O `url_site` precisa começar por `https://`.
+
 O `config.php` fica fora do Git, então atualizar o site pelo Git não apaga a configuração nem os dados.
 
 **4. Confira a versão do PHP**
@@ -290,10 +294,11 @@ Abra no navegador, trocando pelo seu endereço:
 | Endereço | Deve responder |
 |----------|----------------|
 | `https://seudominio.com.br/config.php` | 403 (acesso negado) |
-| `https://seudominio.com.br/dados/dados.json` | 403 (depois do primeiro acesso ao site) |
+| `https://seudominio.com.br/dados/dados.php` | 403 ou 404, sem conteúdo (depois do primeiro acesso ao site) |
 | `https://seudominio.com.br/.git/config` | 404 |
+| `http://seudominio.com.br/` (sem o "s") | redireciona para `https://` |
 
-Se algum deles abrir, não cadastre ninguém antes de resolver.
+Se algum deles abrir, não cadastre ninguém antes de resolver. O redirecionamento sai como 302; depois de conferir que ele funciona, dá para trocar por 301 no `.htaccess`.
 
 **6. Agende a atualização dos preços**
 
@@ -307,7 +312,9 @@ Em **Avançado** → **Cron Jobs**, uma vez por dia (por exemplo às 6h):
 Acesse `https://seudominio.com.br/admin.php`, entre com a `senha_admin`, preencha o evento, cadastre os participantes e clique em **Sortear e enviar convites**. Vale fazer um sorteio de teste com e-mails seus antes do sorteio de verdade e depois usar **Desfazer sorteio**.
 
 ### Atualizando o site depois
-No hPanel, em **Git**, clique em **Implantar** de novo (ou ative a implantação automática). O `config.php` e a pasta `dados/` continuam como estão.
+Com um sorteio já feito, baixe antes uma cópia da pasta `dados/` pelo Gerenciador de Arquivos. Depois, no hPanel, em **Git**, clique em **Implantar** de novo (ou ative a implantação automática). O `config.php` e a pasta `dados/` continuam como estão.
+
+Um site que ainda guarda os dados em `dados/dados.json` (versões antigas) converte o arquivo sozinho para `dados/dados.php` no primeiro acesso.
 
 ---
 
@@ -316,9 +323,14 @@ No hPanel, em **Git**, clique em **Implantar** de novo (ou ative a implantação
 - Senhas com `password_hash()` e conferência em tempo constante mesmo para e-mail inexistente
 - Token CSRF em todos os formulários e chamadas
 - Limite de tentativas: 5 erros de login bloqueiam por 15 minutos; pedidos de redefinição e buscas também têm limite
+- HTTPS obrigatório, com redirecionamento e HSTS
 - Sessão com cookies `HttpOnly`, `SameSite=Lax` e `Secure` em HTTPS, com novo identificador a cada login
-- Links de convite e de redefinição com prazo de validade
+- Links de convite e de redefinição com prazo de validade e uso único
+- Os convites saem em ordem aleatória e os pares são gravados por id: nem a hora do e-mail nem a ordem do arquivo contam quem tirou quem
+- O painel do organizador não abre com a senha do modelo nem com senha curta
 - `config.php`, os arquivos internos e a pasta `dados/` bloqueados pelo `.htaccess`
+- O arquivo de dados começa por uma linha de PHP que responde 404: pedido pelo navegador, ele não entrega nada mesmo que o `.htaccess` seja ignorado
+- Erros do PHP não aparecem na página; o detalhe fica só no log do servidor
 - Arquivo de dados com trava e gravação atômica; se estiver corrompido, o site não sobrescreve
 - O que cada um separou para comprar e escondeu da própria lista só aparece para a própria pessoa
 

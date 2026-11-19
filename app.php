@@ -1,6 +1,9 @@
 <?php
 // Núcleo do site: configuração, sessão, dados (JSON com lock), login, e-mails e layout.
 
+// Erro do PHP nunca aparece na página (pode trazer o caminho da conta); fica só no log
+ini_set('display_errors', '0');
+
 // O config.php não vai para o repositório: ele nasce de uma cópia do config.exemplo.php
 if (!is_file(__DIR__ . '/config.php')) {
     http_response_code(503);
@@ -12,6 +15,9 @@ require __DIR__ . '/smtp.php';
 require __DIR__ . '/steam.php';
 
 const DADOS_DIR            = __DIR__ . '/dados';
+// Primeira linha do arquivo de dados: se alguém pedir o arquivo pelo navegador, o servidor
+// executa isto e responde 404 vazio, mesmo que o .htaccess da pasta seja ignorado.
+const DADOS_GUARDA         = "<?php http_response_code(404); exit; __halt_compiler();\n";
 const VALIDADE_CONVITE     = 14 * 86400;
 const VALIDADE_REDEFINICAO = 3600;
 const CACHE_STEAM          = 6 * 3600;
@@ -35,10 +41,15 @@ set_exception_handler(function (Throwable $e) {
     echo '<!doctype html><meta charset="utf-8"><title>Erro</title>'
         . '<div style="font:15px/22px system-ui,sans-serif;max-width:480px;margin:96px auto;padding:0 24px;color:#1f1b16">'
         . '<p style="font-size:18px;margin:0 0 8px">O site não conseguiu abrir agora</p>'
-        . '<p style="color:#5e554a;margin:0">' . htmlspecialchars($e->getMessage(), ENT_QUOTES, 'UTF-8') . '</p></div>';
+        // Só as mensagens escritas para o usuário aparecem; o detalhe do resto fica no log
+        . '<p style="color:#5e554a;margin:0">' . htmlspecialchars($e instanceof Recusa ? $e->getMessage() : 'Tente de novo em instantes.', ENT_QUOTES, 'UTF-8') . '</p></div>';
 });
 
-$https = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || (($_SERVER['SERVER_PORT'] ?? '') == 443);
+$https = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || (($_SERVER['SERVER_PORT'] ?? '') == 443)
+    || ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https';
+if ($https) {
+    header('Strict-Transport-Security: max-age=31536000');
+}
 header('Referrer-Policy: no-referrer');
 header('X-Content-Type-Options: nosniff');
 header('X-Frame-Options: DENY');
@@ -92,14 +103,25 @@ function ip(): string
     return $_SERVER['REMOTE_ADDR'] ?? '?';
 }
 
+// Os links dos e-mails só saem em https; http vale apenas para testar no próprio computador.
+function url_site_valida(string $url): bool
+{
+    return (bool) preg_match('~^https://.|^http://(localhost|127\.0\.0\.1)(:\d+)?(/|$)~', $url);
+}
+
 function url_site(string $caminho): string
 {
     global $config;
-    $base = rtrim(trim($config['url_site'] ?? ''), '/');
-    if (!preg_match('~^https?://~', $base)) {
-        throw new Recusa('Preencha o url_site no config.php com o endereço do site antes de enviar e-mails.');
+    $base = rtrim(trim((string) ($config['url_site'] ?? '')), '/');
+    if (!url_site_valida($base)) {
+        throw new Recusa('Preencha o url_site no config.php com o endereço do site, começando por https://, antes de enviar e-mails.');
     }
     return $base . '/' . $caminho;
+}
+
+function email_valido(string $email): bool
+{
+    return strlen($email) <= 254 && filter_var($email, FILTER_VALIDATE_EMAIL) !== false;
 }
 
 function data_extenso(string $ymd): string
@@ -190,34 +212,52 @@ function dados_inicial(): array
 function dados_lock(int $modo)
 {
     if (!is_dir(DADOS_DIR) && !mkdir(DADOS_DIR, 0755, true) && !is_dir(DADOS_DIR)) {
-        throw new RuntimeException('Não foi possível criar a pasta de dados.');
+        throw new Recusa('Não foi possível criar a pasta de dados.');
     }
     if (!is_file(DADOS_DIR . '/.htaccess')) {
         file_put_contents(DADOS_DIR . '/.htaccess', "Require all denied\n");
     }
     $l = fopen(DADOS_DIR . '/dados.lock', 'c');
     if (!$l || !flock($l, $modo)) {
-        throw new RuntimeException('Não foi possível travar o arquivo de dados.');
+        throw new Recusa('Não foi possível travar o arquivo de dados.');
     }
     return $l;
 }
 
 function dados_carregar(): array
 {
-    $arquivo = DADOS_DIR . '/dados.json';
-    if (!is_file($arquivo)) {
+    $arquivo = DADOS_DIR . '/dados.php';
+    if (is_file($arquivo)) {
+        $texto = (string) file_get_contents($arquivo);
+        $n = strlen(DADOS_GUARDA);
+        $json = strncmp($texto, DADOS_GUARDA, $n) === 0 ? substr($texto, $n) : '';
+    } elseif (is_file(DADOS_DIR . '/dados.json')) {
+        // Formato antigo, sem a linha de guarda; a próxima gravação já sai no novo
+        $json = (string) file_get_contents(DADOS_DIR . '/dados.json');
+    } else {
         return dados_inicial();
     }
-    $d = json_decode((string) file_get_contents($arquivo), true);
+    $d = json_decode($json, true);
     if (!is_array($d)) {
         // Nunca grava por cima de um arquivo que não deu para ler
-        throw new RuntimeException('O arquivo dados/dados.json está corrompido. Nada foi alterado.');
+        throw new Recusa('O arquivo de dados está corrompido. Nada foi alterado.');
     }
     return array_replace(dados_inicial(), $d);
 }
 
 function dados_ler(): array
 {
+    // Dados ainda no formato antigo: regrava no novo. Se não der, segue lendo o antigo
+    static $tentou = false;
+    if (!$tentou && is_file(DADOS_DIR . '/dados.json') && !is_file(DADOS_DIR . '/dados.php')) {
+        $tentou = true;
+        try {
+            dados_alterar(function () {
+            });
+        } catch (Throwable $e) {
+            error_log('Amigo Secreto: não foi possível converter o arquivo de dados: ' . $e->getMessage());
+        }
+    }
     $l = dados_lock(LOCK_SH);
     try {
         return dados_carregar();
@@ -247,9 +287,13 @@ function dados_alterar(callable $alterar)
         }
 
         $json = json_encode($d, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-        $tmp = DADOS_DIR . '/dados.json.tmp';
-        if ($json === false || file_put_contents($tmp, $json) !== strlen($json) || !rename($tmp, DADOS_DIR . '/dados.json')) {
-            throw new RuntimeException('Não foi possível gravar os dados.');
+        $tmp = DADOS_DIR . '/dados.tmp.php';
+        if ($json === false || file_put_contents($tmp, DADOS_GUARDA . $json) !== strlen(DADOS_GUARDA . $json) || !rename($tmp, DADOS_DIR . '/dados.php')) {
+            throw new Recusa('Não foi possível gravar os dados.');
+        }
+        // O arquivo do formato antigo sai depois que o novo já está gravado
+        if (is_file(DADOS_DIR . '/dados.json') && !@unlink(DADOS_DIR . '/dados.json') && is_file(DADOS_DIR . '/dados.json')) {
+            error_log('Amigo Secreto: apague o arquivo antigo dados/dados.json');
         }
         return $retorno;
     } finally {
@@ -315,10 +359,19 @@ function iniciar_sessao_participante(array $d, array $p): void
     $_SESSION['ver'] = versao_sessao($d, $p);
 }
 
+// A senha do modelo (ou uma curta demais) não abre o painel.
+function senha_admin_fraca(): bool
+{
+    global $config;
+    $s = $config['senha_admin'] ?? null;
+    return !is_string($s) || $s === 'troque-esta-senha' || strlen($s) < 10;
+}
+
 function admin_logado(): bool
 {
     global $config;
-    return !empty($_SESSION['admin']) && hash_equals(hash('sha256', $config['senha_admin']), $_SESSION['admin']);
+    return !senha_admin_fraca() && !empty($_SESSION['admin']) && is_string($_SESSION['admin'])
+        && hash_equals(hash('sha256', $config['senha_admin']), $_SESSION['admin']);
 }
 
 // Gera um token de uso único; no participante fica só o hash.

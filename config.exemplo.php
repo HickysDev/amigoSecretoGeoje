@@ -1,10 +1,11 @@
 <?php
 // Modelo de configuração. Copie este arquivo para config.php e preencha (o config.php não vai para o Git).
 return [
-    // Senha do painel do organizador (admin.php). Troque!
+    // Senha do painel do organizador (admin.php). Troque: com esta senha de exemplo, ou com
+    // menos de 10 caracteres, o painel não abre.
     'senha_admin' => 'troque-esta-senha',
 
-    // Endereço do site, sem barra no fim. Obrigatório: é usado nos links dos e-mails.
+    // Endereço do site, com https:// e sem barra no fim. Obrigatório: é usado nos links dos e-mails.
     // Ex.: 'https://seudominio.com.br' ou 'https://seudominio.com.br/amigo-secreto'
     'url_site' => '',
 

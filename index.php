@@ -12,8 +12,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($acao === 'entrar') {
             $email = trim((string) ($_POST['email'] ?? ''));
             $senha = (string) ($_POST['senha'] ?? '');
+            if (!email_valido($email)) {
+                throw new Recusa('E-mail ou senha incorretos.');
+            }
             $entrou = dados_alterar(function (array &$d) use ($email, $senha) {
-                $chaves = ['login:ip:' . ip(), 'login:email:' . strtolower($email)];
+                $chaves = ['login:ip:' . ip(), 'login:email:' . sha1(strtolower($email))];
                 foreach ($chaves as $c) {
                     if (!limite_ok($d, $c, 5, 900)) {
                         throw new Recusa('Muitas tentativas. Espere 15 minutos e tente de novo.');
@@ -222,7 +225,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } catch (Recusa $e) {
         flash('erro', $e->getMessage());
     } catch (Throwable $e) {
-        flash('erro', 'Algo deu errado: ' . $e->getMessage());
+        error_log('Amigo Secreto: ' . $e->getMessage());
+        flash('erro', 'Algo deu errado. Tente de novo em instantes');
     }
     // Volta para a mesma aba de onde o formulário veio
     $aba = $_GET['aba'] ?? '';

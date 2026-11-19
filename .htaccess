@@ -1,12 +1,22 @@
 DirectoryIndex index.php
 Options -Indexes
 
+# Tudo por HTTPS (menos no próprio computador). Depois de conferir com
+# "curl -I http://seudominio" que o redirecionamento funciona, pode trocar 302 por 301.
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteCond %{HTTPS} !=on
+    RewriteCond %{HTTP:X-Forwarded-Proto} !=https
+    RewriteCond %{HTTP_HOST} !^(localhost|127\.0\.0\.1)(:\d+)?$
+    RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [R=302,L]
+</IfModule>
+
 <FilesMatch "^(config|config\.exemplo|app|smtp|steam|atualizar)\.php$">
     Require all denied
 </FilesMatch>
 
-# Arquivos do repositório que não fazem parte do site
-<FilesMatch "\.md$|^\.git(ignore|attributes)$">
+# Arquivos do repositório e registros de erro do PHP: não fazem parte do site
+<FilesMatch "\.md$|\.log$|^error_log$|^\.git(ignore|attributes)$">
     Require all denied
 </FilesMatch>
 RedirectMatch 404 "/\.git(/|$)"
