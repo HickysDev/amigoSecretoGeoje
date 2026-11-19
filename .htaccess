@@ -1,0 +1,16 @@
+DirectoryIndex index.php
+Options -Indexes
+
+<FilesMatch "^(config|config\.exemplo|app|smtp|steam|atualizar)\.php$">
+    Require all denied
+</FilesMatch>
+
+# Arquivos do repositório que não fazem parte do site
+<FilesMatch "\.md$|^\.git(ignore|attributes)$">
+    Require all denied
+</FilesMatch>
+RedirectMatch 404 "/\.git(/|$)"
+
+<IfModule mod_headers.c>
+    Header always set Referrer-Policy "no-referrer"
+</IfModule>
