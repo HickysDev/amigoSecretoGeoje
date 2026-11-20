@@ -369,7 +369,7 @@ function jogo_linha(array $j): string
 {
     return '<a class="jogo-linha" href="' . h($j['url']) . '" target="_blank" rel="noopener"' . jogo_dados($j) . '>'
         . '<span class="jogo-mini">' . ($j['capa'] ? '<img src="' . h($j['capa']) . '" alt="" loading="lazy">' : '') . '</span>'
-        . '<span class="jogo-nome">' . h($j['nome']) . '</span>'
+        . '<span class="jogo-nome">' . h($j['nome']) . '</span>' . selo_switch($j)
         . preco_html($j) . '</a>';
 }
 
