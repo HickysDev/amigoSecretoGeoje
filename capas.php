@@ -110,9 +110,17 @@ function capas_buscar(array $nomes): array
         if (time() - $inicio > CAPAS_ORCAMENTO) {
             break;
         }
-        $busca = trim(preg_replace('~[™®©"]|\s*[-–]\s*Nintendo Switch\s*$~u', '', str_replace(chr(92), '', $n)));
+        $busca = trim(preg_replace('~[™®©"]|\s*[-–]\s*Nintendo Switch.*$~u', '', str_replace(chr(92), '', $n)));
         $tentativas = [$busca];
+        $busca2 = trim(preg_replace('~^(Pacote|Bundle)\s+~iu', '', preg_replace('~\s*\(.*$~u', '', $busca)));
+        if ($busca2 !== $busca) {
+            $tentativas[] = $busca2;
+        }
         $curto = trim(preg_replace('~\s*[\(\[].*$~u', '', preg_replace('~\s*[:–-]\s*[^:–-]*(Edition|Collection|Bundle|Pack|Deluxe|Complete).*$~iu', '', $busca)));
+        $alt = trim(preg_replace('~^ACA NEOGEO\s+~iu', '', str_ireplace(['Trilogia', 'Coleção', 'Edição'], ['Trilogy', 'Collection', 'Edition'], $busca)));
+        if ($alt !== '' && !in_array($alt, $tentativas, true)) {
+            $tentativas[] = $alt;
+        }
         if ($curto !== '' && $curto !== $busca) {
             $tentativas[] = $curto;
         }
