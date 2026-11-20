@@ -13,6 +13,7 @@ if (!is_file(__DIR__ . '/config.php')) {
 $config = require __DIR__ . '/config.php';
 require __DIR__ . '/smtp.php';
 require __DIR__ . '/steam.php';
+require __DIR__ . '/nintendo.php';
 
 const DADOS_DIR            = __DIR__ . '/dados';
 // Primeira linha do arquivo de dados: se alguém pedir o arquivo pelo navegador, o servidor

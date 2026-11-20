@@ -201,6 +201,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $d['participantes'][$pid]['steamid'] = $steamid;
                 });
                 flash('ok', $steamid ? 'Perfil Steam salvo. Sua lista de desejos já aparece para o grupo' : 'Perfil Steam removido');
+            } elseif ($acao === 'nintendo') {
+                $texto = trim((string) ($_POST['nintendo'] ?? ''));
+                if (strlen($texto) > 200000) {
+                    throw new Recusa('O texto é grande demais. Copie só a lista de desejos.');
+                }
+                $jogos = $texto === '' ? [] : nintendo_ler($texto);
+                if ($texto !== '' && !$jogos) {
+                    throw new Recusa('Não achei jogos nesse texto. Copie a página da lista de desejos inteira (Ctrl+A, Ctrl+C) e cole de novo.');
+                }
+                dados_alterar(function (array &$d) use ($pid, $jogos) {
+                    if (!limite_ok($d, 'nintendo:' . $pid, 10, 900)) {
+                        throw new Recusa('Você já salvou várias vezes agora. Espere uns minutos e tente de novo.');
+                    }
+                    limite_marcar($d, 'nintendo:' . $pid);
+                    $d['participantes'][$pid]['nintendo'] = $jogos;
+                    $d['participantes'][$pid]['nintendo_em'] = time();
+                });
+                flash('ok', $jogos ? plural(count($jogos), 'jogo', 'jogos') . ' da eShop salvos. Sua lista já aparece para o grupo' : 'Lista da eShop removida');
             } elseif ($acao === 'senha') {
                 $atual = (string) ($_POST['atual'] ?? '');
                 $nova = (string) ($_POST['nova'] ?? '');
@@ -469,6 +487,9 @@ $avatares = avatares_steam();   // lido depois de listas_steam, que pode ter aca
 // Jogos que a pessoa escondeu não saem do servidor para os outros; só o dono vê todos ($com_ocultos)
 $jogos_de = function (array $p, bool $com_ocultos = false) use ($listas) {
     $jogos = empty($p['steamid']) ? [] : ($listas[$p['steamid']] ?? null);
+    if (!empty($p['nintendo'])) {
+        $jogos = array_merge($jogos ?: [], $p['nintendo']);
+    }
     if (!$jogos || $com_ocultos || empty($p['ocultos'])) {
         return $jogos;
     }
@@ -534,7 +555,7 @@ topo($evento['nome'], ['evento' => $evento['nome'], 'usuario' => $eu['nome'], 'a
       <div class="bloco-topo">
         <div>
           <h2>Lista de desejos de <?= h($tirou['nome']) ?><?= ajuda('São os jogos que a pessoa marcou na Steam, com o preço de hoje. O + da capa separa o jogo como "talvez eu compre". Só você vê o que separou') ?></h2>
-          <?php if ($jt): ?><p class="sub"><?= resumo_lista($jt) ?>. Preços da Steam de hoje</p><?php endif ?>
+          <?php if ($jt): ?><p class="sub"><?= resumo_lista($jt) ?>. Preços de hoje</p><?php endif ?>
         </div>
         <div class="bloco-acoes">
           <?php if (!empty($tirou['steamid'])): ?>
@@ -609,7 +630,9 @@ topo($evento['nome'], ['evento' => $evento['nome'], 'usuario' => $eu['nome'], 'a
             <?php if ($jp): ?>
               <div class="pessoa-acoes"><button type="button" class="botao secundario pequeno" data-ampliar data-nome="<?= h($p['nome']) ?>" data-resumo="<?= h(resumo_lista($jp)) ?>"><?= icone('expandir') ?>Ver em tela cheia</button></div>
               <div data-lista-jogos><?php foreach (por_desconto($jp) as $j) echo jogo_linha($j); ?></div>
+              <?php if (!empty($p['steamid'])): ?>
               <a class="link-steam" href="<?= h(steam_link_lista($p['steamid'])) ?>" target="_blank" rel="noopener"><?= icone('externo') ?>Lista completa na Steam</a>
+              <?php endif ?>
             <?php else: echo sem_lista($p, $jp, $sou); endif ?>
           </div>
         </details>
@@ -640,7 +663,7 @@ topo($evento['nome'], ['evento' => $evento['nome'], 'usuario' => $eu['nome'], 'a
 <main class="minha">
   <div class="minha-topo">
     <h1 class="titulo">Minha lista de desejos<?= ajuda('É a lista que o grupo vê. Clique no olho de uma capa para esconder ou mostrar o jogo. Ninguém fica sabendo o que você escondeu') ?></h1>
-    <p class="sub">Escolha o que quem tirou você pode ver. Os jogos vêm da sua lista na Steam; aqui você esconde ou mostra cada um</p>
+    <p class="sub">Escolha o que quem tirou você pode ver. Os jogos vêm da sua lista na Steam ou na eShop; aqui você esconde ou mostra cada um</p>
   </div>
   <div class="minha-grade">
     <aside class="minha-lado">
@@ -655,6 +678,22 @@ topo($evento['nome'], ['evento' => $evento['nome'], 'usuario' => $eu['nome'], 'a
         <p class="nota">A lista precisa estar pública: na Steam, Editar perfil, Privacidade, Detalhes de jogos públicos</p>
         <button class="botao secundario" name="acao" value="steam">Salvar perfil</button>
       </form>
+      <form method="post" action="./?aba=lista" class="form cartao" id="eshop">
+        <?= csrf_campo() ?>
+        <h3>Lista da eShop (Nintendo)<?= ajuda('Cole o texto da sua lista de desejos da eShop. Os preços vêm em reais, como estão na página') ?></h3>
+        <ol class="passos">
+          <li>Abra o link da sua lista de desejos da eShop (o de compartilhar).</li>
+          <li>Espere os jogos aparecerem. Aperte <b>Ctrl+A</b> e depois <b>Ctrl+C</b> (no celular: segure no texto, Selecionar tudo, Copiar).</li>
+          <li>Cole abaixo e clique em Salvar lista.</li>
+        </ol>
+        <img class="passos-gif" src="assets/como-colar-eshop.gif" alt="Passo a passo: abrir a lista na eShop, copiar o texto e colar aqui" loading="lazy">
+        <label class="campo"><span>Texto da lista</span>
+          <textarea name="nintendo" rows="5" placeholder="Cole aqui o texto copiado da eShop"></textarea></label>
+        <?php if (!empty($eu['nintendo'])): ?>
+        <p class="nota"><?= plural(count($eu['nintendo']), 'jogo salvo', 'jogos salvos') ?>, <?= h(tempo_relativo((int) ($eu['nintendo_em'] ?? 0))) ?>. Colar de novo substitui a lista; salvar vazio remove</p>
+        <?php endif ?>
+        <button class="botao secundario" name="acao" value="nintendo">Salvar lista</button>
+      </form>
       <?php if (!empty($eu['steamid'])): ?>
       <form method="post" class="form cartao">
         <?= csrf_campo() ?>
@@ -662,13 +701,13 @@ topo($evento['nome'], ['evento' => $evento['nome'], 'usuario' => $eu['nome'], 'a
         <p class="sub">Lista <?= h(tempo_relativo((int) $atualizada)) ?>. Ela também se atualiza sozinha a cada 6 horas</p>
         <button class="botao secundario" name="acao" value="atualizar_lista"><?= icone('atualizar') ?>Atualizar agora</button>
       </form>
+      <?php endif ?>
       <?php if ($minha): ?>
       <dl class="fatos cartao">
-        <div><dt><?= icone('controle') ?>Na Steam</dt><dd class="num" data-cont-total><?= count($minha) ?></dd></div>
+        <div><dt><?= icone('controle') ?>Na lista</dt><dd class="num" data-cont-total><?= count($minha) ?></dd></div>
         <div><dt><?= icone('olho') ?>Aparecem para o grupo</dt><dd class="num" data-cont-aparecem><?= count($minha) - $n_escondidos ?></dd></div>
         <div><dt><?= icone('olho-off') ?>Escondidos</dt><dd class="num" data-cont-escondidos><?= $n_escondidos ?></dd></div>
       </dl>
-      <?php endif ?>
       <?php endif ?>
     </aside>
 

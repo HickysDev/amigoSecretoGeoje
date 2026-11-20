@@ -726,3 +726,8 @@ html:has(dialog[open]) { overflow: hidden; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition: none !important; animation: none !important; }
 }
+
+/* Passo a passo da lista da eShop */
+.passos { margin: 0; padding-left: 20px; color: var(--texto-2); font-size: 14px; line-height: 21px; }
+.passos li + li { margin-top: 4px; }
+.passos-gif { display: block; width: 100%; height: auto; border-radius: 10px; border: 1px solid var(--linha-forte); }
