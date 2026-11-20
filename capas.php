@@ -4,8 +4,8 @@
 // Os resultados (inclusive "não achei") ficam em dados/capas.json (pasta protegida pelo .htaccess).
 
 const CAPAS_ARQ = __DIR__ . '/dados/capas.json';
-const CAPAS_MAX_POR_ENVIO = 40;   // jogos buscados por envio; o resto fica para o próximo (o cache cresce)
-const CAPAS_ORCAMENTO = 25;       // segundos no máximo gastos na busca
+const CAPAS_MAX_POR_ENVIO = 100;   // jogos buscados por envio; o resto fica para o próximo (o cache cresce)
+const CAPAS_ORCAMENTO = 50;       // segundos no máximo gastos na busca
 
 function capas_post(string $url, string $corpo, array $cab = []): ?array
 {
@@ -93,7 +93,7 @@ function capas_buscar(array $nomes): array
     $falta = [];
     foreach (array_unique($nomes) as $n) {
         $k = capas_chave($n);
-        if (isset($cache['c'][$k]) && ($cache['c'][$k]['url'] !== '' || $cache['c'][$k]['em'] > time() - 7 * 86400)) {
+        if (isset($cache['c'][$k]) && ($cache['c'][$k]['url'] !== '' || ($cache['v'] ?? 0) >= 2 && $cache['c'][$k]['em'] > time() - 86400)) {
             $out[$n] = $cache['c'][$k]['url'];
         } else {
             $falta[$n] = $k;
@@ -103,6 +103,7 @@ function capas_buscar(array $nomes): array
         return $out;
     }
     $cab = ['Client-ID: ' . $igdb['client_id'], 'Authorization: Bearer ' . $token, 'Accept: application/json'];
+    @set_time_limit(90);
     $inicio = time();
     $novos = [];
     foreach (array_slice($falta, 0, CAPAS_MAX_POR_ENVIO, true) as $n => $k) {
@@ -110,7 +111,19 @@ function capas_buscar(array $nomes): array
             break;
         }
         $busca = trim(preg_replace('~[™®©"]|\s*[-–]\s*Nintendo Switch\s*$~u', '', str_replace(chr(92), '', $n)));
-        $r = capas_post('https://api.igdb.com/v4/games', 'search "' . $busca . '"; fields name,cover.image_id; where cover != null; limit 5;', $cab);
+        $tentativas = [$busca];
+        $curto = trim(preg_replace('~\s*[\(\[].*$~u', '', preg_replace('~\s*[:–-]\s*[^:–-]*(Edition|Collection|Bundle|Pack|Deluxe|Complete).*$~iu', '', $busca)));
+        if ($curto !== '' && $curto !== $busca) {
+            $tentativas[] = $curto;
+        }
+        $r = [];
+        foreach ($tentativas as $t) {
+            $r = capas_post('https://api.igdb.com/v4/games', 'search "' . $t . '"; fields name,cover.image_id; where cover != null; limit 5;', $cab);
+            if ($r === null || $r) {
+                break;
+            }
+            usleep(280000);
+        }
         if ($r === null) {
             break;                                 // falha de rede/limite: para e tenta de novo no próximo envio
         }
@@ -128,6 +141,7 @@ function capas_buscar(array $nomes): array
     }
     if ($novos) {
         capas_gravar(function (array &$c) use ($novos) {
+            $c['v'] = 2;                           // versão 2: "não achei" de versões antigas é ignorado
             foreach ($novos as $k => $v) {
                 $c['c'][$k] = $v;
             }
