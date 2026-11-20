@@ -452,34 +452,36 @@ function avatar_html(array $p, array $avatares, string $classe = ''): string
 
 function email_html(string $conteudo): string
 {
-    return '<div style="background:#f7f4ee;padding:32px 16px;font-family:Arial,Helvetica,sans-serif;color:#1f1b16">'
-        . '<div style="max-width:520px;margin:0 auto;background:#fdfbf7;border:1px solid #e7e0d4;border-radius:14px;padding:32px">'
+    $logo = h(url_site('assets/marca-geoje.png'));
+    return '<div style="background:#1e1f23;padding:32px 16px;font-family:Montserrat,Arial,Helvetica,sans-serif;color:#ededf0">'
+        . '<div style="max-width:520px;margin:0 auto;background:#25262b;border:1px solid #33343a;border-radius:14px;padding:32px">'
+        . '<p style="margin:0 0 24px"><img src="' . $logo . '" width="44" alt="" style="vertical-align:middle;border:0">'
+        . '<span style="vertical-align:middle;margin-left:10px;font-size:15px;font-weight:bold;letter-spacing:3px;color:#ededf0">GEOJE</span></p>'
         . $conteudo . '</div></div>';
 }
 
 function email_botao(string $url, string $texto): string
 {
     return '<p style="margin:28px 0"><a href="' . h($url) . '" style="background:#004aad;color:#ffffff;text-decoration:none;'
-        . 'padding:12px 20px;border-radius:8px;font-size:15px;display:inline-block">' . h($texto) . '</a></p>';
+        . 'padding:13px 22px;border-radius:8px;font-size:15px;font-weight:bold;display:inline-block">' . h($texto) . '</a></p>';
 }
 
 function email_convite(array $evento, array $p, array $tirou, string $link): array
 {
     $quando = trim(data_extenso($evento['data']) . ($evento['valor'] ? ' · valor mínimo ' . $evento['valor'] : ''), ' ·');
-    $texto = "Olá, {$p['nome']}.\n\nO sorteio do {$evento['nome']} foi feito. Você tirou:\n\n{$tirou['nome']}\n\n"
+    $texto = "Olá, {$p['nome']}.\n\nO sorteio do {$evento['nome']} foi feito.\n\n"
         . ($quando ? "$quando\n\n" : '')
-        . "Crie sua senha para entrar no site e ver a lista de desejos de {$tirou['nome']} e do grupo todo:\n$link\n\n"
+        . "Crie sua senha para entrar no site e descobrir quem você tirou:\n$link\n\n"
         . "O link vale por 14 dias. Guarde segredo.\n";
     $html = email_html(
-        '<p style="margin:0 0 4px;font-size:14px;color:#7b7266">' . h($evento['nome']) . '</p>'
-        . '<p style="margin:0 0 24px;font-size:16px">Olá, ' . h($p['nome']) . '. O sorteio foi feito. Você tirou:</p>'
-        . '<p style="margin:0;font-size:32px;font-weight:bold;color:#1e1f23">' . h($tirou['nome']) . '</p>'
-        . ($quando ? '<p style="margin:8px 0 0;font-size:14px;color:#5e554a">' . h($quando) . '</p>' : '')
+        '<p style="margin:0 0 4px;font-size:14px;color:#a6a7ae">' . h($evento['nome']) . '</p>'
+        . '<p style="margin:0;font-size:22px;font-weight:bold;line-height:30px">Olá, ' . h($p['nome']) . '. O sorteio foi feito.</p>'
+        . ($quando ? '<p style="margin:10px 0 0;font-size:14px;color:#a6a7ae">' . h($quando) . '</p>' : '')
+        . '<p style="margin:20px 0 0;font-size:15px;line-height:24px;color:#ededf0">Crie sua senha para entrar no site e descobrir quem você tirou.</p>'
         . email_botao($link, 'Criar minha senha')
-        . '<p style="margin:0;font-size:14px;line-height:22px;color:#5e554a">Com ela você entra no site para ver a lista de desejos de '
-        . h($tirou['nome']) . ' e do grupo todo. O link vale por 14 dias. Guarde segredo.</p>'
+        . '<p style="margin:0;font-size:13px;line-height:21px;color:#87888f">O link vale por 14 dias. Guarde segredo.</p>'
     );
-    return [$evento['nome'] . ': seu amigo secreto', $texto, $html];
+    return [$evento['nome'] . ': o sorteio foi feito', $texto, $html];
 }
 
 function email_redefinicao(array $evento, array $p, string $link): array
@@ -487,10 +489,11 @@ function email_redefinicao(array $evento, array $p, string $link): array
     $texto = "Olá, {$p['nome']}.\n\nPara criar uma senha nova no {$evento['nome']}, abra o link:\n$link\n\n"
         . "O link vale por 1 hora. Se não foi você que pediu, ignore este e-mail.\n";
     $html = email_html(
-        '<p style="margin:0 0 4px;font-size:14px;color:#7b7266">' . h($evento['nome']) . '</p>'
-        . '<p style="margin:0;font-size:16px">Olá, ' . h($p['nome']) . '. Use o botão para criar uma senha nova.</p>'
+        '<p style="margin:0 0 4px;font-size:14px;color:#a6a7ae">' . h($evento['nome']) . '</p>'
+        . '<p style="margin:0;font-size:22px;font-weight:bold;line-height:30px">Olá, ' . h($p['nome']) . '.</p>'
+        . '<p style="margin:12px 0 0;font-size:15px;line-height:24px">Use o botão para criar uma senha nova.</p>'
         . email_botao($link, 'Criar senha nova')
-        . '<p style="margin:0;font-size:14px;color:#5e554a">O link vale por 1 hora. Se não foi você que pediu, ignore este e-mail.</p>'
+        . '<p style="margin:0;font-size:13px;line-height:21px;color:#87888f">O link vale por 1 hora. Se não foi você que pediu, ignore este e-mail.</p>'
     );
     return [$evento['nome'] . ': senha nova', $texto, $html];
 }
