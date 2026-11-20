@@ -19,4 +19,6 @@ return [
         'remetente' => 'amigosecreto@seudominio.com.br',
         'nome'      => 'Amigo Secreto',
     ],
+    // Capas dos jogos da eShop (IGDB). Crie um app em dev.twitch.tv/console e cole as chaves. Opcional.
+    'igdb' => ['client_id' => '', 'client_secret' => ''],
 ];

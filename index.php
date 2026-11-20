@@ -210,6 +210,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if ($texto !== '' && !$jogos) {
                     throw new Recusa('Não achei jogos nesse texto. Copie a página da lista de desejos inteira (Ctrl+A, Ctrl+C) e cole de novo.');
                 }
+                if ($jogos) {                       // capas pelo IGDB (opcional; sem chave ou com falha, fica sem capa)
+                    $capas = capas_buscar(array_column($jogos, 'nome'));
+                    foreach ($jogos as &$jg) {
+                        $jg['capa'] = $capas[$jg['nome']] ?? '';
+                    }
+                    unset($jg);
+                }
                 dados_alterar(function (array &$d) use ($pid, $jogos) {
                     if (!limite_ok($d, 'nintendo:' . $pid, 10, 900)) {
                         throw new Recusa('Você já salvou várias vezes agora. Espere uns minutos e tente de novo.');
