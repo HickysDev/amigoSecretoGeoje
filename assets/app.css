@@ -593,7 +593,7 @@ html:has(dialog[open]) { overflow: hidden; }
 .minha { max-width: 1280px; margin: 0 auto; padding: 40px 32px 80px; }
 .minha-topo { margin-bottom: 32px; }
 .minha-grade { display: grid; grid-template-columns: 340px minmax(0, 1fr); gap: 40px; align-items: start; }
-.minha-lado { position: static; min-width: 0; display: grid; gap: 16px; }
+.minha-lado { position: static; min-width: 0; display: grid; gap: 16px; align-items: start; }
 .minha-lado > * { min-width: 0; }
 .minha-lado textarea { max-width: 100%; box-sizing: border-box; }
 .minha-lado .form .sub { margin: 0; font-size: 14px; line-height: 20px; }

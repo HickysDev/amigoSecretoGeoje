@@ -20,8 +20,13 @@ function nintendo_ler(string $texto): array
         }
         $atual = null;
     };
+    $anterior = '';
     foreach (preg_split('~\R~u', $texto) as $linha) {
         $linha = trim($linha);
+        $anterior_linha = $anterior;
+        if ($linha !== '') {
+            $anterior = $linha;
+        }
         if (preg_match('~^[*\-]\s*\[(.+)\]\((https?://(?:www\.)?nintendo\.com/[^)\s]+)\)$~u', $linha, $m)) {
             $fechar();
             $nome = trim(preg_replace('~\s*(?:\d{2}/\d{2}/\d{2}|Coming\s+\d{4}|Em breve.*)$~u', '', $m[1]));
@@ -39,6 +44,28 @@ function nintendo_ler(string $texto): array
                 'preco_original' => '',
                 'promo_ate'      => 0,
                 'url'            => 'https://www.nintendo.com/pt-br/store/products/' . $slug . '/',
+                'capa'           => '',
+                'loja'           => 'nintendo',
+            ];
+        } elseif (
+            // Texto copiado direto da página (sem links): o nome vem numa linha e a data na seguinte.
+            preg_match('~^(?:\d{2}/\d{2}/\d{2}|Coming\s+\d{4}|Em breve.*)$~u', $linha)
+            && $anterior_linha !== ''
+            && !preg_match('~^(?:Current Price|Regular Price|-\d{1,3}%|Saiba mais)~u', $anterior_linha)
+        ) {
+            $fechar();
+            $nome = mb_substr($anterior_linha, 0, 150);
+            $slug = trim(preg_replace('~[^a-z0-9]+~', '-', strtolower(iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $nome) ?: $nome)), '-');
+            $atual = [
+                'appid'          => NINTENDO_ID_BASE + crc32($slug !== '' ? $slug : $nome),
+                'nome'           => $nome,
+                'ordem'          => count($jogos),
+                'preco'          => 'Sem preço',
+                'centavos'       => -1,
+                'desconto'       => 0,
+                'preco_original' => '',
+                'promo_ate'      => 0,
+                'url'            => 'https://www.nintendo.com/pt-br/search/?q=' . rawurlencode($nome),
                 'capa'           => '',
                 'loja'           => 'nintendo',
             ];
