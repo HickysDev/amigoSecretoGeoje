@@ -737,5 +737,5 @@ html:has(dialog[open]) { overflow: hidden; }
 .jogo-img { position: relative; }
 .selo-switch { position: absolute; top: 10px; left: 10px; display: inline-flex; align-items: center; gap: 5px; padding: 4px 9px 4px 7px; border-radius: 999px; background: #e60012; color: #fff; font-size: 11px; font-weight: 700; letter-spacing: .3px; line-height: 1; box-shadow: 0 2px 6px rgba(0, 0, 0, .35); }
 .selo-switch svg { width: 14px; height: 14px; fill: currentColor; }
-.jogo-linha .selo-switch { position: static; flex: none; box-shadow: none; padding: 3px 8px 3px 6px; font-size: 10px; }
+.jogo-linha .selo-switch { position: static; display: inline-flex; vertical-align: middle; margin-left: 8px; box-shadow: none; padding: 3px 8px 3px 6px; font-size: 10px; }
 .jogo-linha .selo-switch svg { width: 12px; height: 12px; }
