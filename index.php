@@ -686,7 +686,7 @@ topo($evento['nome'], ['evento' => $evento['nome'], 'usuario' => $eu['nome'], 'a
           <li>Espere os jogos aparecerem. Aperte <b>Ctrl+A</b> e depois <b>Ctrl+C</b> (no celular: segure no texto, Selecionar tudo, Copiar).</li>
           <li>Cole abaixo e clique em Salvar lista.</li>
         </ol>
-        <img class="passos-gif" src="assets/como-colar-eshop.gif" alt="Passo a passo: abrir a lista na eShop, copiar o texto e colar aqui" loading="lazy">
+        <img class="passos-gif" src="assets/como-colar-eshop.gif?v=2" alt="Passo a passo: abrir a lista na eShop, copiar o texto e colar aqui" loading="lazy">
         <label class="campo"><span>Texto da lista</span>
           <textarea name="nintendo" rows="5" placeholder="Cole aqui o texto copiado da eShop"></textarea></label>
         <?php if (!empty($eu['nintendo'])): ?>
