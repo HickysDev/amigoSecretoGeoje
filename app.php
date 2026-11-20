@@ -563,7 +563,7 @@ function topo(string $titulo, array $o = []): void
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/app.css?v=34">
+<link rel="stylesheet" href="assets/app.css?v=35">
 <link rel="icon" href="assets/logo-geoje.png">
 </head>
 <body class="<?= h($o['classe'] ?? '') ?>">

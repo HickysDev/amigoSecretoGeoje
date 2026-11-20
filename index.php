@@ -315,6 +315,15 @@ function jogo_resultado(array $j, bool $adicionado): string
 
 // $recolhido: começa escondido (lista grande mostra só os primeiros; o app.js abre o resto)
 // $surpresa: jogo fora da lista de desejos; o botão tira o jogo em vez de marcar e desmarcar
+// Selo vermelho com o ícone do Switch nos jogos que vieram da eShop da Nintendo.
+function selo_switch(array $j): string
+{
+    if (($j['loja'] ?? '') !== 'nintendo') {
+        return '';
+    }
+    return '<span class="selo-switch" title="Nintendo Switch"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8.5 3h-2A3.5 3.5 0 0 0 3 6.5v11A3.5 3.5 0 0 0 6.5 21h2zM5.5 7.6a1.2 1.2 0 1 1 0 2.4 1.2 1.2 0 0 1 0-2.4zM10 3v18h7.5a3.5 3.5 0 0 0 3.5-3.5v-11A3.5 3.5 0 0 0 17.5 3zm6 4.8a2.2 2.2 0 1 1 0 4.4 2.2 2.2 0 0 1 0-4.4z"/></svg>Switch</span>';
+}
+
 function jogo_capa(array $j, bool $escolhido = false, bool $recolhido = false, bool $surpresa = false): string
 {
     $ate = !empty($j['promo_ate']) ? '<span class="promo-ate">Promoção até ' . h(date('d/m', $j['promo_ate'])) . '</span>' : '';
@@ -322,7 +331,7 @@ function jogo_capa(array $j, bool $escolhido = false, bool $recolhido = false, b
     $titulo = !$tem_preco ? 'Sem preço na Steam' : ($escolhido ? 'Tirar da seleção' : 'Talvez eu compre');
     return '<div class="jogo-caixa' . ($escolhido ? ' escolhido' : '') . '"' . jogo_dados($j) . ($recolhido ? ' hidden' : '') . '>'
         . '<a class="jogo" href="' . h($j['url']) . '" target="_blank" rel="noopener" title="' . h($j['nome']) . '">'
-        . '<span class="jogo-img">' . ($j['capa'] ? '<img src="' . h($j['capa']) . '" alt="" loading="lazy">' : '') . '</span>'
+        . '<span class="jogo-img">' . ($j['capa'] ? '<img src="' . h($j['capa']) . '" alt="" loading="lazy">' : '') . selo_switch($j) . '</span>'
         . '<span class="jogo-info"><span class="jogo-nome"><span class="jogo-titulo">' . h($j['nome']) . '</span>' . $ate . '</span>'
         . preco_html($j) . '</span></a>'
         . '<button type="button" class="escolher" ' . ($surpresa ? 'data-surpresa' : 'data-escolher') . '="' . (int) $j['appid'] . '" aria-pressed="' . ($escolhido ? 'true' : 'false') . '"'
@@ -370,7 +379,7 @@ function jogo_capa_dono(array $j, bool $oculto): string
     $acao = $oculto ? 'Mostrar para o grupo' : 'Esconder do grupo';
     return '<div class="jogo-caixa' . ($oculto ? ' oculto' : '') . '"' . jogo_dados($j) . '>'
         . '<a class="jogo" href="' . h($j['url']) . '" target="_blank" rel="noopener" title="' . h($j['nome']) . '">'
-        . '<span class="jogo-img">' . ($j['capa'] ? '<img src="' . h($j['capa']) . '" alt="" loading="lazy">' : '') . '</span>'
+        . '<span class="jogo-img">' . ($j['capa'] ? '<img src="' . h($j['capa']) . '" alt="" loading="lazy">' : '') . selo_switch($j) . '</span>'
         . '<span class="jogo-info"><span class="jogo-nome"><span class="jogo-titulo">' . h($j['nome']) . '</span></span>' . preco_html($j) . '</span></a>'
         . '<span class="escondido">Escondido</span>'
         . '<button type="button" class="escolher olho-btn" data-ocultar="' . (int) $j['appid'] . '" aria-pressed="' . ($oculto ? 'true' : 'false')
