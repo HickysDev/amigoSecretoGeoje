@@ -75,6 +75,22 @@ function capas_token(array $igdb): ?string
     return $token;
 }
 
+// Fallback sem chave: busca na loja da Steam e usa a imagem de cabeçalho do primeiro resultado de mesmo nome.
+function capas_steam(string $termo): string
+{
+    $ch = curl_init('https://store.steampowered.com/api/storesearch/?cc=br&l=portuguese&term=' . rawurlencode($termo));
+    curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER => true, CURLOPT_CONNECTTIMEOUT => 3, CURLOPT_TIMEOUT => 6]);
+    $r = curl_exec($ch);
+    $j = $r !== false ? json_decode($r, true) : null;
+    $k = capas_chave($termo);
+    foreach ($j['items'] ?? [] as $it) {
+        if (!empty($it['id']) && capas_chave((string) ($it['name'] ?? '')) === $k) {
+            return 'https://cdn.akamai.steamstatic.com/steam/apps/' . (int) $it['id'] . '/header.jpg';
+        }
+    }
+    return '';
+}
+
 function capas_chave(string $nome): string
 {
     return mb_strtolower(trim(preg_replace('~\s+~u', ' ', preg_replace('~[™®©]~u', '', $nome))));
@@ -136,6 +152,7 @@ function capas_buscar(array $nomes): array
             break;                                 // falha de rede/limite: para e tenta de novo no próximo envio
         }
         $id = '';
+        $url = '';
         foreach ($r as $g) {                       // prefere o nome igual; senão o primeiro com capa
             $id = $id !== '' ? $id : ($g['cover']['image_id'] ?? '');
             if (capas_chave($g['name'] ?? '') === $k && !empty($g['cover']['image_id'])) {
@@ -143,7 +160,15 @@ function capas_buscar(array $nomes): array
                 break;
             }
         }
-        $novos[$k] = ['url' => $id !== '' ? 'https://images.igdb.com/igdb/image/upload/t_cover_big/' . $id . '.jpg' : '', 'em' => time()];
+        if ($id === '') {                          // IGDB não achou: tenta a busca da loja da Steam
+            foreach (array_slice($tentativas, 0, 3) as $t) {
+                $url = capas_steam($t);
+                if ($url !== '') {
+                    break;
+                }
+            }
+        }
+        $novos[$k] = ['url' => $id !== '' ? 'https://images.igdb.com/igdb/image/upload/t_cover_big/' . $id . '.jpg' : ($url ?? ''), 'em' => time()];
         $out[$n] = $novos[$k]['url'];
         usleep(280000);                            // IGDB aceita ~4 pedidos por segundo
     }
