@@ -109,7 +109,7 @@ function capas_buscar(array $nomes): array
     $falta = [];
     foreach (array_unique($nomes) as $n) {
         $k = capas_chave($n);
-        if (isset($cache['c'][$k]) && ($cache['c'][$k]['url'] !== '' || ($cache['v'] ?? 0) >= 2 && $cache['c'][$k]['em'] > time() - 86400)) {
+        if (isset($cache['c'][$k]) && ($cache['c'][$k]['url'] !== '' || ($cache['v'] ?? 0) >= 3 && $cache['c'][$k]['em'] > time() - 3600)) {
             $out[$n] = $cache['c'][$k]['url'];
         } else {
             $falta[$n] = $k;
@@ -174,7 +174,7 @@ function capas_buscar(array $nomes): array
     }
     if ($novos) {
         capas_gravar(function (array &$c) use ($novos) {
-            $c['v'] = 2;                           // versão 2: "não achei" de versões antigas é ignorado
+            $c['v'] = 3;                           // versão 3: "não achei" de versões antigas é ignorado
             foreach ($novos as $k => $v) {
                 $c['c'][$k] = $v;
             }
